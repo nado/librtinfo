@@ -1,11 +1,14 @@
 #ifndef __SYSINFO_H
 	#define __SYSINFO_H
 	
-	#define LIBRTINFO_DEBUG			0		/* Enable lib debug message */
-	#define LIBRTINFO_HDDTEMP_HOST		"127.0.0.1" 	/* Should always be localhost */
-	#define LIBRTINFO_HDDTEMP_PORT		7634
+	#define LIBRTINFO_DEBUG	        0            // enable lib debug messages
 	
-	/* System defines */
+	#define LIBRTINFO_HDDTEMP_HOST  "127.0.0.1"  // hdd temp host should always be localhost
+	#define LIBRTINFO_HDDTEMP_PORT  7634         // hdd temp port
+	
+	//
+	// system defined path
+	//
 	#define LIBRTINFO_MEMORY_FILE	"/proc/meminfo"
 	#define LIBRTINFO_LOADAVG_FILE	"/proc/loadavg"
 	#define LIBRTINFO_CPU_FILE	"/proc/stat"

@@ -1,5 +1,5 @@
 /*
- * unix load average support for librtinfo
+ * global sensors support for librtinfo
  * Copyright (C) 2012  DANIEL Maxime <root@maxux.net>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,20 +20,15 @@
  
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
+#include <unistd.h>
 #include "misc.h"
 #include "rtinfo.h"
 
-rtinfo_loadagv_t * rtinfo_get_loadavg(rtinfo_loadagv_t *load) {
-	char data[32];
-
-	load->load[0] = -1;
-	load->load[1] = -1;
-	load->load[2] = -1;
+rtinfo_sensors_t *rtinfo_get_sensors(rtinfo_sensors_t *sensors) {
+	rtinfo_sensors_cpu(&sensors->cpu);
+	rtinfo_sensors_hdd(&sensors->hdd);
 	
-	if(!file_get(LIBRTINFO_LOADAVG_FILE, data, sizeof(data)))
-		return NULL;
-	
-	sscanf(data, "%f %f %f", &load->load[0], &load->load[1], &load->load[2]);
-	
-	return load;
+	return sensors;
 }

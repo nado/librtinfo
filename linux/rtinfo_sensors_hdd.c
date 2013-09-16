@@ -30,7 +30,7 @@
 #include "misc.h"
 #include "rtinfo.h"
 
-int __rtinfo_internal_hddtemp_connect() {
+static int __rtinfo_hddtemp_connect() {
 	int sockfd = -1, connresult;
 	struct sockaddr_in server_addr;
 	struct hostent *he;
@@ -65,7 +65,7 @@ int __rtinfo_internal_hddtemp_connect() {
 	return sockfd;
 }
 
-uint16_t __rtinfo_internal_hddtemp_parse(char *buffer, unsigned int *peak) {
+static uint16_t __rtinfo_hddtemp_parse(char *buffer, unsigned int *peak) {
 	unsigned int value = 0, this;
 	unsigned int disks = 0, skip = 0;
 	char *str = buffer;
@@ -105,14 +105,16 @@ uint16_t __rtinfo_internal_hddtemp_parse(char *buffer, unsigned int *peak) {
 	return (disks > 0) ? value / disks : 0;
 }
 
-rtinfo_temp_hdd_t * rtinfo_get_temp_hdd(rtinfo_temp_hdd_t *hddtemp) {
+rtinfo_sensors_data_t *rtinfo_sensors_hdd(rtinfo_sensors_data_t *hddtemp) {
 	int sockfd;
 	unsigned int peak = 0;
 	char buffer[1024];
 	size_t rlen;
 	
-	if((sockfd = __rtinfo_internal_hddtemp_connect()) < 0) {
-		hddtemp->hdd_average = 0;
+	if((sockfd = __rtinfo_hddtemp_connect()) < 0) {
+		hddtemp->average  = 0;
+		hddtemp->hottest  = 0;
+		hddtemp->critical = 0;
 		return hddtemp;
 	}
 	
@@ -121,8 +123,8 @@ rtinfo_temp_hdd_t * rtinfo_get_temp_hdd(rtinfo_temp_hdd_t *hddtemp) {
 	
 	rtinfo_debug("[+] librtinfo: hddtemp: %s\n", buffer);
 	
-	hddtemp->hdd_average = __rtinfo_internal_hddtemp_parse(buffer, &peak);
-	hddtemp->peak 	     = peak;
+	hddtemp->average = __rtinfo_hddtemp_parse(buffer, &peak);
+	hddtemp->hottest = peak;
 	
 	close(sockfd);
 	

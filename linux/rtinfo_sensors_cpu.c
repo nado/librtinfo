@@ -42,17 +42,18 @@ cpu_temp_t __temp_cpu[] = {
 /*
  *  Coretemp support
  */
-rtinfo_temp_cpu_t * rtinfo_get_temp_cpu(rtinfo_temp_cpu_t *temp) {
+rtinfo_sensors_data_t *rtinfo_sensors_cpu(rtinfo_sensors_data_t *temp) {
 	FILE *fp;
 	glob_t globbuf;
 	char data[32];
 	size_t k, i;
-	double value = 0;
+	double value = 0, this;
 	unsigned int found = 0;
 	
 	/* default value */
-	temp->cpu_average = 0;
-	temp->critical    = 0;
+	temp->average  = 0;
+	temp->critical = 0;
+	temp->hottest  = 0;
 	
 	globbuf.gl_offs = 1;
 	
@@ -60,14 +61,19 @@ rtinfo_temp_cpu_t * rtinfo_get_temp_cpu(rtinfo_temp_cpu_t *temp) {
 		glob(__temp_cpu[k].path, GLOB_NOSORT, NULL, &globbuf);
 		
 		for(i = 0; i < globbuf.gl_pathc; i++) {
-			fp = fopen(globbuf.gl_pathv[i], "r");
-			if(!fp) {
+			if(!(fp = fopen(globbuf.gl_pathv[i], "r"))) {
 				perror(globbuf.gl_pathv[i]);
 				return NULL;
 			}
 			
-			if(fgets(data, sizeof(data), fp))
-				value += atoi(data) * __temp_cpu[k].multiplier;
+			if(fgets(data, sizeof(data), fp)) {
+				this = atoi(data) * __temp_cpu[k].multiplier;
+				
+				if(this > (double) temp->hottest)
+					temp->hottest = (double) this;
+				
+				value += this;
+			}
 
 			found++;
 			
@@ -105,7 +111,7 @@ rtinfo_temp_cpu_t * rtinfo_get_temp_cpu(rtinfo_temp_cpu_t *temp) {
 	globfree(&globbuf); */
 	
 	/* Compute average */
-	temp->cpu_average = value / found;
+	temp->average = value / found;
 
 	return temp;
 }

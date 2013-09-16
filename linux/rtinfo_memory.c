@@ -31,50 +31,60 @@ rtinfo_memory_t * rtinfo_get_memory(rtinfo_memory_t *memory) {
 	FILE *fp;
 	char data[32], missing;
 	unsigned int _memfree = 0, _buffers = 0, _cached = 0;
+	unsigned int _swapfree = 0;
 
 	if(!(fp = fopen(LIBRTINFO_MEMORY_FILE, "r")))
 		diep(LIBRTINFO_MEMORY_FILE);
 
-	/* Init Memory */
-	memory->ram_used  = 0;	/* Init Used ram to zero */
-	memory->swap_free = 0;	/* Init free Swap */
-	missing = 6;		/* Numbers of lines to read */
+	// init memory
+	memory->ram.used  = 0;
+	memory->swap.used = 0;
+	
+	// total of lines to read
+	// this prevent to read more lines as needed
+	// and tracks if everything required is found
+	missing = 6;
 
 	while(missing && fgets(data, sizeof(data), fp) != NULL) {
 		if(strncmp(data, "MemTotal:", 9) == 0) {
-			memory->ram_total = atoll(data+10);
+			memory->ram.total = atoll(data + 10);
 			missing--;
 
 		} else if(strncmp(data, "MemFree:", 8) == 0) {
-			_memfree = atoll(data+9);
+			_memfree = atoll(data + 9);
 			missing--;
 
 		} else if(strncmp(data, "Buffers:", 8) == 0) {
-			_buffers = atoll(data+9);
+			_buffers = atoll(data + 9);
 			missing--;
 
 		} else if(strncmp(data, "Cached:", 7) == 0) {
-			_cached = atoll(data+8);
+			_cached = atoll(data + 8);
 			missing--;
 
 		} else if(strncmp(data, "SwapTotal:", 10) == 0) {
-			memory->swap_total = atoll(data+11);
+			memory->swap.total = atoll(data + 11);
 			missing--;
 
 		} else if(strncmp(data, "SwapFree:", 9) == 0) {
-			memory->swap_free = atoll(data+9);
+			_swapfree = atoll(data + 9);
 			missing--;
 		}
 	}
 
 	fclose(fp);
 	
-	/* Checking if all data required is present */
+	// if we don't have read all required filed, skipping
 	if(missing)
 		return NULL;
 
-	/* Calculating */
-	memory->ram_used = memory->ram_total - _memfree - _buffers - _cached;
+	// computing and fixing unit to bytes
+	memory->ram.used  = (memory->ram.total - _memfree - _buffers - _cached) * 1024;
+	memory->swap.used = (memory->swap.total - _swapfree) * 1024;
+	
+	// fixing unit to bytes
+	memory->ram.total  *= 1024;
+	memory->swap.total *= 1024;
 	
 	return memory;
 }

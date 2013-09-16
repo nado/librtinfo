@@ -24,17 +24,15 @@
 #include "misc.h"
 #include "rtinfo.h"
 
-/* For each interfaces, save old values, write on node */
-rtinfo_uptime_t * rtinfo_get_uptime(rtinfo_uptime_t *uptime) {
+rtinfo_uptime_t *rtinfo_get_uptime(rtinfo_uptime_t *uptime) {
 	char data[32];
 
-	/* Init Load */
 	uptime->uptime = 0;
 	
 	if(!file_get(LIBRTINFO_UPTIME_FILE, data, sizeof(data)))
 		return NULL;
 	
-	sscanf(data, "%" SCNu32, &uptime->uptime);
+	uptime->uptime = atoi(data);
 	
 	return uptime;
 }

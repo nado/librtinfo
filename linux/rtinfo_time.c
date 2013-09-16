@@ -24,10 +24,9 @@
 #include "misc.h"
 #include "rtinfo.h"
 
-struct tm * rtinfo_get_time() {
+struct tm *rtinfo_get_time() {
 	time_t t;
 	
 	time(&t);
 	return localtime(&t);
-	
 }

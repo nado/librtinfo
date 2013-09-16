@@ -32,19 +32,19 @@ rtinfo_cpu_t * rtinfo_init_cpu() {
 	FILE *fp;
 	char data[256];
 	rtinfo_cpu_t *cpu;
-	unsigned int nbcpu;
+	unsigned int count;
 	
 	if(!(fp = fopen(LIBRTINFO_CPU_FILE, "r")))
 		diep(LIBRTINFO_CPU_FILE);
 
 	/* Counting number of cpu availble */
-	nbcpu = 0;
+	count = 0;
 	while(fgets(data, sizeof(data), fp) != NULL) {
 		/* Checking cpu line */
 		if(strncmp(data, "cpu", 3) != 0)
 			break;
 		
-		nbcpu++;
+		count++;
 	}
 	
 	fclose(fp);
@@ -53,16 +53,16 @@ rtinfo_cpu_t * rtinfo_init_cpu() {
 	if(!(cpu = (rtinfo_cpu_t*) malloc(sizeof(rtinfo_cpu_t))))
 		return NULL;
 	
-	cpu->nbcpu = nbcpu;
+	cpu->count = count;
 	
-	if(!(cpu->dev = (rtinfo_cpu_dev_t*) calloc(cpu->nbcpu, sizeof(rtinfo_cpu_dev_t))))
+	if(!(cpu->nodes = (rtinfo_cpu_node_t *) calloc(cpu->count, sizeof(rtinfo_cpu_node_t))))
 		return NULL;
 	
 	return cpu;
 }
 
 void rtinfo_free_cpu(rtinfo_cpu_t *cpu) {
-	free(cpu->dev);
+	free(cpu->nodes);
 	free(cpu);
 }
 
@@ -75,7 +75,7 @@ rtinfo_cpu_t * rtinfo_get_cpu(rtinfo_cpu_t *cpu) {
 	if(!(fp = fopen(LIBRTINFO_CPU_FILE, "r")))
 		diep(LIBRTINFO_CPU_FILE);
 
-	while(fgets(data, sizeof(data), fp) != NULL && j < cpu->nbcpu) {
+	while(fgets(data, sizeof(data), fp) != NULL && j < cpu->count) {
 		/* Checking cpu line */
 		if(strncmp(data, "cpu", 3) != 0)
 			break;
@@ -85,14 +85,14 @@ rtinfo_cpu_t * rtinfo_get_cpu(rtinfo_cpu_t *cpu) {
 			i++;
 		
 		/* Saving previous data */
-		cpu->dev[j].previous = cpu->dev[j].current;
+		cpu->nodes[j].previous = cpu->nodes[j].current;
 		
-		/* cpu0    53464243 2698605 20822211 794620668 16726825 3778099 4582652 0 0 0	*/
-		/*         [.......................] [ idle ]  [............................]	*/
-		/* [name]  [..................... total cpu time ...........................]	*/
+		// cpu0    53464243 2698605 20822211 79462066 16726825 3778099 4582652 0 0 0
+		// [name]  [.......................] [ idle ] [............................]
+		// [name]  [..................... total cpu time ..........................]
 		
-		cpu->dev[j].current.time_total = sum_line(data + i);
-		cpu->dev[j].current.time_idle  = indexll(data, 4);
+		cpu->nodes[j].current.total = sum_line(data + i);
+		cpu->nodes[j].current.idle  = indexll(data, 4);
 
 		j++;
 	}
@@ -102,15 +102,25 @@ rtinfo_cpu_t * rtinfo_get_cpu(rtinfo_cpu_t *cpu) {
 	return cpu;
 }
 
-rtinfo_cpu_t * rtinfo_mk_cpu_usage(rtinfo_cpu_t *cpu) {
-	unsigned int i;
+rtinfo_cpu_t *rtinfo_usage_cpu(rtinfo_cpu_t *cpu) {
+	unsigned int i, idle, cputime;
 	
-	/* CPU Usage: 100 * (delta cpu time - delta idle time) / delta cpu time */
-	for(i = 0; i < cpu->nbcpu; i++) {
-		if(cpu->dev[i].current.time_total != cpu->dev[i].previous.time_total)
-			cpu->dev[i].usage = 100 * ((cpu->dev[i].current.time_total - cpu->dev[i].previous.time_total) - (cpu->dev[i].current.time_idle - cpu->dev[i].previous.time_idle)) / (cpu->dev[i].current.time_total - cpu->dev[i].previous.time_total);
+	// cpu sage: 100 * (delta cpu time - delta idle time) / delta cpu time
+	for(i = 0; i < cpu->count; i++) {
+		// skipping if idle has not changed
+		if(cpu->nodes[i].current.total == cpu->nodes[i].previous.total) {
+			cpu->nodes[i].usage = 0;
+			continue;
+		}
 			
-		else cpu->dev[i].usage = 0;
+		// part 1: (delta cpu time)
+		cputime = cpu->nodes[i].current.total - cpu->nodes[i].previous.total;
+		
+		// part 2: (delta cpu time - delta idle time)
+		idle = cputime - (cpu->nodes[i].current.idle - cpu->nodes[i].previous.idle);
+
+		// final: 100 * (delta cpu time - delta idle time) / delta cpu time
+		cpu->nodes[i].usage = 100 * (idle / cputime);
 	}
 		
 	return cpu;

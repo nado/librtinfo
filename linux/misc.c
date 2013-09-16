@@ -74,3 +74,13 @@ char *file_get(char *filename, char *data, size_t size) {
 	
 	return data;
 }
+
+char *fixslashes(char *str) {
+	char *keep = str;
+	
+	for(; *str; str++)
+		if(*str == '/')
+			*str = '!';
+	
+	return keep;
+}

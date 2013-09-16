@@ -27,7 +27,7 @@
 #include "misc.h"
 #include "rtinfo.h"
 
-rtinfo_battery_status_t __rtinfo_internal_battery_getstatus(char *data) {
+static rtinfo_battery_status_t __rtinfo_battery_getstatus(char *data) {
 	if(!strncmp(data, "Full", 4))
 		return FULL;
 	
@@ -49,39 +49,38 @@ rtinfo_battery_t * rtinfo_get_battery(rtinfo_battery_t *battery, char *name) {
 	char path[128], init_path[100];
 	glob_t globbuf;
 	
-	/* Auto-Name Search */
+	// auto-search
 	if(!name) {
 		globbuf.gl_offs = 1;
 		glob(LIBRTINFO_BATTERY_PATH "/BAT*", GLOB_NOSORT, NULL, &globbuf);
 		
-		/* No battery found / TODO: Multiple batteries found (not supported yet) */
+		// no battery found / TODO: Multiple batteries found (not supported yet)
 		if(globbuf.gl_pathc != 1) {
 			battery->load = -1;
 			return battery;
 		}
 		
-		/* Init Path: Glob found */
+		// init path: glob found
 		strcpy(init_path, globbuf.gl_pathv[0]);
 		globfree(&globbuf);
 	
-	/* Init Path: BATTERY_PATH/name */
+	// init path: BATTERY_PATH/name
 	} else sprintf(init_path, "%s/%s", LIBRTINFO_BATTERY_PATH, name);
 	
 	rtinfo_debug("[+] Init Path: %s\n", init_path);
 
-	/* Checking for battery presence */
+	// checking for battery presence
 	sprintf(path, "%s/present", init_path);
 	
-	fp = fopen(path, "r");
-	if(!fp) {
-		// perror(BATTERY_PATH);
+	if(!(fp = fopen(path, "r"))) {
+		rtinfo_perror(path);		
 		battery->load = -1;
 		return battery;
 	}
 	
 	fclose(fp);
 
-	/* Reading current charge */
+	// reading current charge
 	sprintf(path, "%s/uevent", init_path);
 	
 	if(!(fp = fopen(path, "r"))) {
@@ -92,7 +91,7 @@ rtinfo_battery_t * rtinfo_get_battery(rtinfo_battery_t *battery, char *name) {
 	
 	while(fgets(data, sizeof(data), fp)) {
 		if(!strncmp(data, "POWER_SUPPLY_STATUS", 19)) {
-			battery->status = __rtinfo_internal_battery_getstatus(data + 20);
+			battery->status = __rtinfo_battery_getstatus(data + 20);
 			continue;
 		}
 		
@@ -109,7 +108,7 @@ rtinfo_battery_t * rtinfo_get_battery(rtinfo_battery_t *battery, char *name) {
 	
 	fclose(fp);
 	
-	/* Calculating usage */
+	// compute usage
 	battery->load = ((float) battery->charge_now / battery->charge_full) * 100;
 	
 	return battery;
